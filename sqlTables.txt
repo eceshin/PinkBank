@@ -1,0 +1,336 @@
+
+
+create or replace FUNCTION bireyselgiris(btc char(11),bsifre char(4)) 
+returns table (bid int, badi varchar, bsoyadi varchar)
+as $$
+begin
+return query(select id,adi,soyadi from bireyselKullanici where tcKimlik=btTc and sifre=bsifre);
+end; $$
+LANGUAGE 'plpgsql'
+
+-------------------------------------------------------------
+select Kart.id,Kart.cvc,Kart.date,BireyselHesap.iban,BireyselKullanici.adi,
+BireyselKullanici.soyadi
+from BireyselKullanici join BireyselHesap on 
+BireyselKullanici.id=BireyselHesap.bireyselKullaniciId join BireyselBanka on
+BireyselHesap.id=BireyselBanka.bireyselHesapId join Kart on 
+Kart.id=BireyselBanka.kartId 
+
+--------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.bgirissayfa(
+	kid integer)
+    RETURNS TABLE(kullaniciid integer, kartno char(10), cvc char(3), date date, bakiye character varying, iban char(26), adi character varying, soyadi character varying) 
+    LANGUAGE 'plpgsql'
+AS $BODY$
+begin
+return query(select BireyselKullanici.id,
+			 Kart.kartNo,
+			 Kart.cvc,
+			 Kart.date, 
+			 BireyselBanka.kartbakiye,
+			 BireyselHesap.iban,
+			 BireyselKullanici.adi,
+BireyselKullanici.soyadi
+from BireyselKullanici join BireyselHesap on 
+BireyselKullanici.id=BireyselHesap.bireyselKullaniciId join BireyselBanka on
+BireyselHesap.id=BireyselBanka.bireyselHesapId join Kart on 
+Kart.id=BireyselBanka.kartId where BireyselKullanici.id=kid);
+end; 
+$BODY$;
+
+---------------------------------------------------------------------------------------
+CREATE OR REPLACE Procedure basvuruekle(kadi varchar, ksoyadi varchar, kemail varchar,
+									   ktelefonno char(10), kdogumtarihi date, kuyeliktarihi date,
+									   ktckimlik char(11), ksifre char(4), kikametkahadresi varchar)
+    LANGUAGE 'plpgsql'
+AS $BODY$
+begin
+insert into bireyselkullanici (
+			 adi, soyadi, email, telefonno, dogumtarihi, uyeliktarihi, tckimlik, sifre, 
+			 ikametkahadresi)
+			 values(kadi, ksoyadi , kemail , ktelefonno , kdogumtarihi , kuyeliktarihi ,
+			 ktckimlik , ksifre , kikametkahadresi );
+end; 
+$BODY$;
+
+-- FUNCTION: public.bireyselgiris(character, character)
+
+-- DROP FUNCTION IF EXISTS public.bireyselgiris(character, character);
+
+CREATE OR REPLACE FUNCTION public.bireyselgiris(
+	btc character,
+	bsifre character)
+    RETURNS TABLE(bid integer, badi character varying, bsoyadi character varying) 
+    LANGUAGE 'plpgsql'
+    COST 100
+    VOLATILE PARALLEL UNSAFE
+    ROWS 1000
+
+AS $BODY$
+begin
+return query(select id ,adi ,soyadi from bireyselKullanici where tcKimlik=btc and sifre=bsifre);
+end; 
+$BODY$;
+
+ALTER FUNCTION public.bireyselgiris(character, character)
+    OWNER TO postgres;
+----------------------------------------------------------------------------
+create table BireyselKullanici(
+	id serial not NULL,
+	adi VARCHAR not NULL,
+	soyadi varchar not NULL,
+	email VARCHAR not NULL,
+	telefonNo char(11) UNIQUE not NULL,
+	dogumTarihi date not NULL,
+	uyelikTarihi date not NULL,
+	tcKimlik char(11) UNIQUE not NULL,
+	sifre char(4) not NULL,
+	sehirId int ,
+      ikametkahAdresi varchar ,
+      onaydurumu int,
+	PRIMARY KEY(id),
+	Foreign Key(sehirId) REFERENCES Sehir(id)
+    
+);
+				
+create table KurumsalKullanici(
+	id serial not NULL,
+	kurumAdi VARCHAR not NULL,
+	email VARCHAR not NULL,
+	telefonNo char(7) UNIQUE not NULL,
+	adres varchar not NULL,
+	uyelikTarihi date not NULL,
+	sifre char(4)  not NULL,
+	sehirId int ,
+	PRIMARY KEY(id),
+	Foreign Key(sehirId) REFERENCES Sehir(id)
+    
+);
+
+
+
+create table FaizOranları(
+	id serial not NULL,
+	miktar varchar noT NULL,
+	oran varchar not NULL,
+	PRIMARY KEY(id)
+);
+
+create table Islem(
+	id serial not NULL,
+	islemAdi varchar not NULL,
+	PRIMARY KEY(id)
+);
+
+
+create table HareketBilgi(
+	id serial not NULL,
+	islemId int not Null,
+	miktar varchar not NULL,
+	adres varchar not NULL,
+	PRIMARY KEY(id),
+	Foreign Key(islemId) REFERENCES Islem(id)
+);
+
+
+
+
+create table HareketKart(
+	id serial not NULL,
+	hareketBilgiId int ,
+	kartId int ,
+	PRIMARY KEY(id),
+	Foreign Key(hareketBilgiId) REFERENCES HareketBilgi(id),
+	Foreign Key(kartId) REFERENCES Kart(id)
+    
+);
+
+create table Kart(
+	id serial not NULL,
+	kartNo char(19) not NULL,
+	cvc char(3) not NULL,
+	date date not NULL,
+	PRIMARY KEY(id)
+);
+
+create table BireyselKredi(
+	id serial not NULL,
+	bireyselKullaniciId int ,
+	kartId int not NULL,
+	kartlimit float not NULL,
+	kartborc float ,
+	faizid int,
+	PRIMARY KEY(id),
+	Foreign Key(bireyselkullaniciId) REFERENCES BireyselKullanici(id),
+	Foreign Key(kartId) REFERENCES Kart(id),
+    Foreign Key(faizId) REFERENCES FaizOranları(id)
+  
+);
+
+
+create table VadeOranları(
+	id serial not NULL,
+	miktar varchar noT NULL,
+	oran varchar not NULL,
+	PRIMARY KEY(id)
+);
+
+create table BireyselBanka(
+	id serial not NULL,
+	bireyselKullaniciId int,
+	kartId int ,
+	kartbakiye varchar not NULL,
+	iban char(32) unique not NULL,
+	vadeid int,
+	PRIMARY KEY(id),
+	Foreign Key(bireyselKullaniciId) REFERENCES BireyselKullanici(id),
+	Foreign Key(kartId) REFERENCES Kart(id),
+    Foreign Key(vadeId) REFERENCES vadeoranları(id)
+    
+);
+
+create table KurumsalBanka(
+	id serial not NULL,
+	kurumsalKullaniciId int,
+	kartId int ,
+	kartbakiye varchar not NULL,
+	iban char(32) unique not NULL,
+	vadeid int,
+	PRIMARY KEY(id),
+	Foreign Key(kurumsalKullaniciId) REFERENCES kurumsalKullanici(id),
+	Foreign Key(kartId) REFERENCES Kart(id),
+    Foreign Key(vadeId) REFERENCES vadeoranları(id)
+    
+);
+
+create table KurumsalKredi(
+	id serial not NULL,
+	kurumsalKullaniciId int ,
+	kartId int not NULL,
+	kartlimit float not NULL,
+	kartborc float ,
+	faizid int,
+	PRIMARY KEY(id),
+	Foreign Key(kurumsalkullaniciId) REFERENCES kurumsalKullanici(id),
+	Foreign Key(kartId) REFERENCES Kart(id),
+    Foreign Key(faizId) REFERENCES FaizOranları(id)
+  
+);
+
+create table Sehir(
+	id serial not NULL,
+	sehirAdi varchar not NULL,
+	PRIMARY KEY(id)
+);
+
+
+----------------------------------------------------------------------------
+INSERT INTO public.bireyselkullanici(
+	id, adi, soyadi, email, telefonno, dogumtarihi, uyeliktarihi, tckimlik, sifre, sehirid, ikametkahadresi)
+	VALUES (1, 'ece', 'şahin', 'ecesahina@gmail.com', '5330314209', '2002/04/15', '2022/12/10', '44674977930','1234', 1, 'Meşrutiyet mah. Atatürk bulv.');
+
+INSERT INTO public.kart(
+	id, kartno, cvc, date)
+	VALUES (1, '3829 0384 1483 3472', '234', '2045/12/03');
+
+INSERT INTO public.bireyselhesap(
+	id, bireyselkullaniciid, hesapno, iban, faizid)
+	VALUES (1, 1, '3848302947', 'TR843928174630183647283748',1);
+-----------------------------------------------------------------------------
+  cmd.CommandText = "insert into bireyselkullanici(adi, soyadi, email, telefonno, dogumtarihi, uyeliktarihi, tckimlik, sifre, ikametkahadresi) values(@ad,@soyad,@kemail,@tel,@dtarih,@utarih,@ktc,@ksifre,@kadres);";
+         
+ string procName = "basvuruekle";
+            NpgsqlCommand cmd = new NpgsqlCommand(procName, con);
+
+
+----------------------------------------------------------------------------
+
+CREATE OR REPLACE procedure public.paragonderilen(
+	kiban char(26),
+kmiktar float )
+      LANGUAGE 'plpgsql'
+AS 
+$$
+Declare miktar float;
+begin
+miktar:=kmiktar+kartbakiye;
+update BireyselBanka
+		  set kartbakiye=miktar
+			 where iban=(select iban from bireyselhesap join bireyselbanka
+						 on bireyselbanka.bireyselhesapid=bireyselhesap.id where iban=kiban)
+			;
+end; $$;
+
+
+
+
+
+CREATE OR REPLACE PROCEDURE public.paragonderilen(
+	IN kiban character,
+	IN kmiktar double precision)
+LANGUAGE 'plpgsql'
+AS $BODY$
+begin
+update BireyselBanka
+		  set bakiye=(kmiktar+bakiye)
+			 where EXISTS (select iban from  bireyselbanka
+					 where bireyselbanka.iban=kiban)
+						 ;
+			
+end; 
+$BODY$;
+----------------------------------------------------------------------------------
+-- PROCEDURE: public.bireyselgirissayfa(character, character)
+
+-- DROP PROCEDURE IF EXISTS public.bireyselgirissayfa(character, character);
+
+CREATE OR REPLACE PROCEDURE public.bireyselgirissayfa(
+	IN btc character,
+	IN bsifre character)
+LANGUAGE 'plpgsql'
+AS $BODY$
+begin
+select id ,adi ,soyadi,onaydurumu from bireyselKullanici where tcKimlik=btc and sifre=bsifre;
+end; 
+$BODY$;
+ALTER PROCEDURE public.bireyselgirissayfa(character, character)
+    OWNER TO postgres;
+-----------------------------------------------------------------------------------
+after insert 
+on bireyselkullanici 
+for each row 
+execute function trigger_fun_onaydurumu();
+
+
+create or replace function trigger_fun_onaydurumu()
+returns trigger 
+as
+$$
+begin
+update bireyselkullanici set onaydurumu=0 where onaydurumu is null;
+RETURN NEW;
+end;
+$$
+language plpgsql;
+------------------------------------------------------------------------------------
+create trigger trigger_blimitguncel
+ after update
+on bireyselkredi
+for each row 
+execute procedure trig_blimitguncelle()
+
+
+create or replace function trig_blimitguncelle()
+returns trigger
+as
+$$
+begin
+update Bireyselkredi set kullanilabilirlimit = (kullanilabilirlimit + new.miktar) 
+where id = (select bireyselbanka.id from bireyselbanka join bireyselkullanici on 
+			bireyselbanka.bireyselkullaniciid = bireyselkullanici.id where 
+			bireyselkullanici.id = new.id );
+       
+return new;
+end;
+$$
+language plpgsql;

@@ -1,0 +1,177 @@
+----------------------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.bgirissayfa(
+	kid integer)
+    RETURNS TABLE(kullaniciid integer, kartno character, cvc character, date date, bakiye double precision, iban character, adi character varying, soyadi character varying, onaydurumu integer, bdeger integer) 
+    LANGUAGE 'plpgsql'
+    COST 100
+    VOLATILE PARALLEL UNSAFE
+    ROWS 1000
+
+AS $BODY$
+begin
+return query(select BireyselKullanici.id,
+			 Kart.kartNo,
+			 Kart.cvc,
+			 Kart.date, 
+			 BireyselBanka.bakiye,
+			 BireyselBanka.iban,
+			 BireyselKullanici.adi,
+BireyselKullanici.soyadi,
+			 bireyselKullanici.onaydurumu,
+			 BireyselBanka.deger
+from BireyselKullanici join  BireyselBanka on
+BireyselKullanici.id=BireyselBanka.BireyselKullaniciid join Kart on 
+Kart.id=BireyselBanka.kartId where BireyselKullanici.id=kid);
+end; 
+$BODY$;
+--------------------------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.bireyselgiris(
+	btc character,
+	bsifre character)
+    RETURNS TABLE(bid integer, badi character varying, bsoyadi character varying, bonaydurumu integer) 
+    LANGUAGE 'plpgsql'
+    COST 100
+    VOLATILE PARALLEL UNSAFE
+    ROWS 1000
+
+AS $BODY$
+begin
+return query(select id ,adi ,soyadi,onaydurumu from bireyselKullanici where tcKimlik=btc and sifre=bsifre);
+end; 
+$BODY$;
+--------------------------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.bireyselhesapgoruntule(
+	kid integer)
+    RETURNS TABLE(kullaniciid integer, adi character varying, soyadi character varying, kartno character, cvc character, date date) 
+    LANGUAGE 'plpgsql'
+    COST 100
+    VOLATILE PARALLEL UNSAFE
+    ROWS 1000
+
+AS $BODY$
+begin
+return query(select BireyselKullanici.id,BireyselKullanici.adi,BireyselKullanici.soyadi,Kart.kartNo,Kart.cvc,Kart.date from BireyselKullanici join  BireyselBanka on BireyselKullanici.id = BireyselBanka.BireyselKullaniciid join Kart on Kart.id = BireyselBanka.kartId where BireyselKullanici.id = @kid) union (select BireyselKullanici.id, BireyselKullanici.adi,BireyselKullanici.soyadi,Kart.kartNo,Kart.cvc, Kart.date from BireyselKullanici join
+  BireyselBanka on BireyselKullanici.id = BireyselBanka.BireyselKullaniciid join BireyselKredi on BireyselBanka.id = BireyselKredi.Bireyselbankaid join Kart on Kart.id = BireyselKredi.kartId where BireyselKullanici.id = kid);
+end; 
+$BODY$;
+-----------------------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.bireyselkredisayfa(
+	kid integer)
+    RETURNS TABLE(kullaniciid integer, kartno character, cvc character, date date, klimit double precision, slimit double precision, borc double precision, "faizmiktarı" double precision) 
+    LANGUAGE 'plpgsql'
+    COST 100
+    VOLATILE PARALLEL UNSAFE
+    ROWS 1000
+
+AS $BODY$
+begin
+return query(select BireyselKullanici.id,
+			 Kart.kartNo,
+			 Kart.cvc,
+			 Kart.date, 
+			 BireyselKredi.kullanilabilirlimit,
+			 BireyselKredi.kartlimit,
+			  BireyselKredi.kartborc,
+			  BireyselKredi.faizmiktari
+from BireyselKullanici join  BireyselBanka on
+BireyselKullanici.id=BireyselBanka.BireyselKullaniciid join bireyselkredi on
+		BireyselBanka.id=bireyselkredi.BireyselBankaid join	 Kart on 
+Kart.id=BireyselKredi.kartId where BireyselKullanici.id=kid);
+end; 
+------------------------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.kgirissayfa(
+	kid integer)
+    RETURNS TABLE(kullaniciid integer, kartno character, cvc character, date date, bakiye double precision, iban character, adi character varying, kdeger integer) 
+    LANGUAGE 'plpgsql'
+    COST 100
+    VOLATILE PARALLEL UNSAFE
+    ROWS 1000
+
+AS $BODY$
+begin
+return query(select KurumsalKullanici.id,
+			 Kart.kartNo,
+			 Kart.cvc,
+			 Kart.date, 
+			 KurumsalBanka.kartbakiye,
+			 KurumsalBanka.iban,
+			 KurumsalKullanici.kurumadi,
+			 KurumsalBanka.deger
+from KurumsalKullanici join  KurumsalBanka on
+KurumsalKullanici.id=KurumsalBanka.KurumsalKullaniciid join Kart on 
+Kart.id=KurumsalBanka.kartId where KurumsalKullanici.id=kid);
+end; 
+$BODY$;
+------------------------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.kurumsalgiris(
+	kurumnum character,
+	ksifre character)
+    RETURNS TABLE(kid integer, kuradi character varying) 
+    LANGUAGE 'plpgsql'
+    COST 100
+    VOLATILE PARALLEL UNSAFE
+    ROWS 1000
+
+AS $BODY$
+begin
+return query(select id ,kurumadi  from kurumsalKullanici where kurumno=kurumnum and sifre=ksifre);
+end; 
+$BODY$;
+-----------------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.kurumsalhesapgoruntule(
+	kid integer)
+    RETURNS TABLE(kullaniciid integer, kurumadi character varying, kurumno character, kartno character, cvc character, date date) 
+    LANGUAGE 'plpgsql'
+    COST 100
+    VOLATILE PARALLEL UNSAFE
+    ROWS 1000
+
+AS $BODY$
+begin
+return query(select KurumsalKullanici.id,KurumsalKullanici.kurumadi,KurumsalKullanici.kurumno,Kart.kartNo,Kart.cvc,Kart.date from KurumsalKullanici join  KurumsalBanka on KurumsalKullanici.id = KurumsalBanka.KurumsalKullaniciid join Kart on Kart.id = KurumsalBanka.kartId where KurumsalKullanici.id = @kid) union
+(select KurumsalKullanici.id,KurumsalKullanici.kurumadi,KurumsalKullanici.kurumno,Kart.kartNo,Kart.cvc, Kart.date from KurumsalKullanici join  KurumsalBanka on KurumsalKullanici.id = KurumsalBanka.KurumsalKullaniciid join KurumsalKredi on KurumsalBanka.id = KurumsalKredi.KurumsalBankaid join Kart on Kart.id = KurumsalKredi.kartId where KurumsalKullanici.id = kid);
+ 
+end; 
+$BODY$;
+------------------------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.kurumsalkredisayfa(
+	kid integer)
+    RETURNS TABLE(kullaniciid integer, kartno character, cvc character, date date, klimit double precision, slimit double precision, borc double precision, "faizmiktarı" double precision) 
+    LANGUAGE 'plpgsql'
+    COST 100
+    VOLATILE PARALLEL UNSAFE
+    ROWS 1000
+
+AS $BODY$
+begin
+return query(select KurumsalKullanici.id,
+			 Kart.kartNo,
+			 Kart.cvc,
+			 Kart.date, 
+			 KurumsalKredi.kullanilabilirlimit,
+			 KurumsalKredi.kartlimit,
+			  KurumsalKredi.kartborc,
+			  KurumsalKredi.faizmiktari
+			 
+from KurumsalKullanici join  KurumsalBanka on
+KurumsalKullanici.id=KurumsalBanka.KurumsalKullaniciid join Kurumsalkredi on
+		KurumsalBanka.id=Kurumsalkredi.KurumsalBankaid join	 Kart on 
+Kart.id=KurumsalKredi.kartId where KurumsalKullanici.id=kid);
+end; 
+$BODY$;
+------------------------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.yoneticigiris(
+	yno character,
+	ysifre character)
+    RETURNS TABLE(yid integer, yadi character varying, ysoyadi character varying, yyoneticino character) 
+    LANGUAGE 'plpgsql'
+    COST 100
+    VOLATILE PARALLEL UNSAFE
+    ROWS 1000
+
+AS $BODY$
+begin
+return query(select id ,adi ,soyadi,yoneticino from yonetici where yoneticino=yno and sifre=ysifre);
+end; 
+$BODY$;
+-------------------------------------------------------------------------------------------

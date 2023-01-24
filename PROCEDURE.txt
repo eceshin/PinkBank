@@ -1,0 +1,84 @@
+
+CREATE OR REPLACE PROCEDURE public.basvuruekle(
+	IN ad character varying,
+	IN soyad character varying,
+	IN kemail character varying,
+	IN tel character,
+	IN dtarih date,
+	IN utarih date,
+	IN ktc character,
+	IN ksifre character,
+	IN kadres character varying)
+LANGUAGE 'plpgsql'
+AS $BODY$
+begin
+insert into bireyselkullanici (
+			 adi, soyadi, email, telefonno, dogumtarihi, uyeliktarihi, tckimlik, sifre, 
+			 ikametkahadresi)
+			 values(ad, soyad , kemail , tel , dtarih , utarih ,
+			 ktc , ksifre , kadres );
+end; 
+$BODY$;
+----------------------------------------------------------------------------------------
+
+CREATE OR REPLACE PROCEDURE public.bireyselguncelle(
+	IN kid integer,
+	IN ad character varying,
+	IN soyad character varying,
+	IN kemail character varying,
+	IN tel character,
+	IN ksifre character,
+	IN kadres character varying)
+LANGUAGE 'plpgsql'
+AS $BODY$
+begin
+update bireyselkullanici 
+			 set adi=ad, soyadi=soyad , email=kemail , telefonno=tel , sifre=ksifre , ikametkahadresi=kadres
+			 where id=kid;
+			 end
+$BODY$;
+----------------------------------------------------------------------------------------
+CREATE OR REPLACE PROCEDURE public.kurumsalguncelle(
+	IN kid integer,
+	IN ad character varying,
+	IN kemail character varying,
+	IN tel character,
+	IN ksifre character,
+	IN kadres character varying,
+	IN krmno character varying)
+LANGUAGE 'plpgsql'
+AS $BODY$
+begin
+update kurumsalkullanici 
+			 set kurumadi=ad, email=kemail , telefonno=tel , sifre=ksifre , adres=kadres, kurumno=krmno
+			 where id=kid;
+			 end
+$BODY$;
+----------------------------------------------------------------------------------------
+CREATE OR REPLACE PROCEDURE public.paragonderen(
+	IN kid integer,
+	IN kmiktar double precision)
+LANGUAGE 'plpgsql'
+AS $BODY$
+begin
+update BireyselBanka
+		  set bakiye=(bakiye-kmiktar)
+			 where id=(select bireyselbanka.id from bireyselbanka
+									 join bireyselkullanici on bireyselbanka.bireyselkullaniciid=bireyselkullanici.id
+									where bireyselkullanici.id=kid ) ;
+			
+end; 
+$BODY$;
+----------------------------------------------------------------------------------------
+CREATE OR REPLACE PROCEDURE public.paragonderilen(
+	IN kiban character,
+	IN kmiktar double precision)
+LANGUAGE 'plpgsql'
+AS $BODY$
+begin
+update BireyselBanka
+		  set bakiye=(kmiktar+bakiye)
+			 where iban=kiban ;
+end; 
+$BODY$;
+----------------------------------------------------------------------------------------

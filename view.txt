@@ -1,0 +1,53 @@
+CREATE OR REPLACE VIEW public.krediodemeleri
+ AS
+ SELECT bireyselkrediodeme.miktar,
+    bireyselkrediodeme.tarih,
+    ((bireyselkullanici.adi::text || ' '::text) || bireyselkullanici.soyadi::text)::character varying AS "adı"
+   FROM bireyselkrediodeme
+     JOIN bireyselkredi ON bireyselkrediodeme.bireyselkrediid = bireyselkredi.id
+     JOIN bireyselbanka ON bireyselbanka.id = bireyselkredi.bireyselbankaid
+     JOIN bireyselkullanici ON bireyselkullanici.id = bireyselbanka.bireyselkullaniciid
+UNION ALL
+ SELECT kurumsalkrediodeme.miktar,
+    kurumsalkrediodeme.tarih,
+    kurumsalkullanici.kurumadi AS "adı"
+   FROM kurumsalkrediodeme
+     JOIN kurumsalkredi ON kurumsalkredi.id = kurumsalkrediodeme.kurumsalkrediid
+     JOIN kurumsalbanka ON kurumsalkredi.kurumsalbankaid = kurumsalbanka.id
+     JOIN kurumsalkullanici ON kurumsalkullanici.id = kurumsalbanka.kurumsalkullaniciid;
+
+------------------------------------------------------------------------------------------
+CREATE OR REPLACE VIEW public.bankakullanicilari
+ AS
+ SELECT bireyselbanka.id,
+    bireyselbanka.bireyselkullaniciid AS kullaniciid,
+    bireyselbanka.kartid,
+    bireyselbanka.iban,
+    bireyselbanka.bakiye,
+    bireyselbanka.deger
+   FROM bireyselbanka
+UNION
+ SELECT kurumsalbanka.id,
+    kurumsalbanka.kurumsalkullaniciid AS kullaniciid,
+    kurumsalbanka.kartid,
+    kurumsalbanka.iban,
+    kurumsalbanka.kartbakiye AS bakiye,
+    kurumsalbanka.deger
+   FROM kurumsalbanka;
+--------------------------------------------------------------------------------------------
+CREATE OR REPLACE VIEW public.kullanicilar
+ AS
+ SELECT bireyselkullanici.id,
+    bireyselkullanici.adi,
+    bireyselkullanici.email,
+    bireyselkullanici.telefonno,
+    bireyselkullanici.ikametkahadresi
+   FROM bireyselkullanici
+UNION
+ SELECT kurumsalkullanici.id,
+    kurumsalkullanici.kurumadi AS adi,
+    kurumsalkullanici.email,
+    kurumsalkullanici.telefonno,
+    kurumsalkullanici.adres AS ikametkahadresi
+   FROM kurumsalkullanici;
+----------------------------------------------------------------------------------------

@@ -1,0 +1,105 @@
+create trigger trig_bkrediode
+after insert 
+on bireyselkrediodeme 
+for each row 
+execute procedure trig_fun_bkrediode();
+
+
+create or replace function trig_fun_bkrediode()
+returns trigger
+as
+$$
+begin
+update BireyselKredi set kartborc = (kartborc - new.miktar) ,
+kullanilabilirlimit=(kullanilabilirlimit + new.miktar)
+where id = new.bireyselkrediid ;
+return new;
+end;
+$$
+language plpgsql;
+
+--------------------------------------------------------------------------------------
+create or replace trigger trig_bkredihesaptakalan
+after insert 
+on bireyselkrediodeme 
+for each row 
+execute procedure trig_fun_bkredihesaptakalan();
+
+
+create or replace function trig_fun_bkredihesaptakalan()
+returns trigger
+as
+$$
+begin
+update bireyselBanka set bakiye = (bakiye - new.miktar)
+where id =some( select bireyselkredi.bireyselbankaid from bireyselkredi 
+							 join bireyselkrediodeme on
+bireyselkredi.id=bireyselkrediodeme.bireyselkrediid 
+		   where bireyselkredi.id=new.bireyselkrediid);
+
+return new;
+end;
+$$
+language plpgsql;
+-------------------------------------------------------------------------------------
+create or replace trigger trig_kkrediode
+after insert 
+on kurumsalkrediodeme 
+for each row 
+execute procedure trig_fun_kkrediode();
+
+
+create or replace function trig_fun_kkrediode()
+returns trigger
+as
+$$
+begin
+update kurumsalKredi set kartborc = (kartborc - new.miktar) ,
+kullanilabilirlimit=(kullanilabilirlimit + new.miktar)
+where id = new.kurumsalkrediid ;
+return new;
+end;
+$$
+language plpgsql;
+-------------------------------------------------------------------------------------
+create or replace trigger trig_kkredihesaptakalan
+after insert 
+on kurumsalkrediodeme 
+for each row 
+execute procedure trig_fun_kkredihesaptakalan();
+
+
+create or replace function trig_fun_kkredihesaptakalan()
+returns trigger
+as
+$$
+begin
+update kurumsalBanka set kartbakiye = (kartbakiye - new.miktar)
+where id =some( select kurumsalkredi.kurumsalbankaid from kurumsalkredi 
+							 join kurumsalkrediodeme on
+kurumsalkredi.id=kurumsalkrediodeme.kurumsalkrediid 
+		   where kurumsalkredi.id=new.kurumsalkrediid);
+
+return new;
+end;
+$$
+language plpgsql;
+-------------------------------------------------------------------------------------
+CREATE TRIGGER trigger_basvuruekle
+    AFTER INSERT
+    ON public.bireyselkullanici
+    FOR EACH ROW
+    EXECUTE FUNCTION public.trigger_fun_onaydurumu();
+
+
+CREATE OR REPLACE FUNCTION public.trigger_fun_onaydurumu()
+    RETURNS trigger
+    LANGUAGE 'plpgsql'
+    COST 100
+    VOLATILE NOT LEAKPROOF
+AS $BODY$
+begin
+update bireyselkullanici set onaydurumu=0 where onaydurumu is null;
+RETURN NEW;
+end;
+$BODY$;
