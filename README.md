@@ -1,1 +1,1 @@
-
+Bireysel ve kurumsal kullanıcı girişlerine sahip bir bankanın hesapları arası iban kullanarak para transferi işletmeciliği ve varsa kullanıcı kredi borçlarını ödeyip kullanılabilir limitlerini güncelleyen ve bakiyelerinden düşen bir banka uygulamasıdır.
